@@ -1,0 +1,1 @@
+java -Xmx7000m -cp out\production\SH2016\;lib\trove4j-3.0.3.jar SimpleSNA
