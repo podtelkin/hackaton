@@ -1,6 +1,4 @@
 import gnu.trove.iterator.TIntShortIterator;
-import gnu.trove.list.array.TIntArrayList;
-import gnu.trove.list.array.TLongArrayList;
 import gnu.trove.map.hash.TIntShortHashMap;
 
 import java.io.*;
@@ -10,25 +8,21 @@ import java.util.StringTokenizer;
 /**
  * @author Fedor Podtelkin
  */
-public class SimpleSNA {
-    private static final String INPUT_DIR = "graph/";    // РїР°РїРєР°, РіРґРµ Р»РµР¶Р°С‚ 16 СЂР°СЃРїР°РєРѕРІР°РЅРЅС‹С… РІС…РѕРґРЅС‹С… С„Р°Р№Р»РѕРІ part-v008....
-    private static final double LIMIT = 4000000;
+public class SNAPreBuildMatrix {
+    private static final String INPUT_DIR = "graph/";    // папка, где лежат 16 распакованных входных файлов part-v008....
 
     private long tm = System.currentTimeMillis();
     private int vertexes;
-    private int vertexes7mod11;
     private int edges;
-    private int edges7mod11;
     private TIntShortHashMap opposite = new TIntShortHashMap();
     private Index matrix;
     private Index invert;
 
     public static void main(String[] args) throws Exception {
-        SimpleSNA sna = new SimpleSNA();
+        SNAPreBuildMatrix sna = new SNAPreBuildMatrix();
         sna.analyzeInput();
         sna.initMemory();
         sna.loadInput();
-        sna.commonFriends();
     }
 
     private void analyzeInput() throws Exception {
@@ -45,25 +39,18 @@ public class SimpleSNA {
                 for (int j = 0; t.hasMoreTokens(); j++) {
                     String a = t.nextToken();
                     if (j == 0) {
-                        key = Integer.parseInt(a);
                         vertexes++;
-                        if (key % 11 == 7) {
-                            vertexes7mod11++;
-                        }
                     } else if (j % 2 == 1) {
                         int v = Integer.parseInt(a);
                         opposite.adjustOrPutValue(v, (short)1, (short)1);
                         edges++;
-                        if (key % 11 == 7) {
-                            edges7mod11++;
-                        }
                     }
                 }
             }
             in.close();
             System.out.print(".");
         }
-        System.out.println("\nvertexes = " + vertexes + "\nedges = " + edges + "\noppositeVertexes = " + opposite.size() + "\nvertexes7mod11 = " + vertexes7mod11 + "\nedges7mod11 = " + edges7mod11);
+        System.out.println("\nvertexes = " + vertexes + "\nedges = " + edges + "\noppositeVertexes = " + opposite.size());
         milestone("analyzeInput");
     }
 
@@ -79,9 +66,9 @@ public class SimpleSNA {
         iter = null;
         opposite = null;
         System.gc();
-        invert.qsort(0, invert.size-1);
+        invert.qsort(0, invert.size - 1);
 
-        matrix = new Index(edges7mod11, vertexes7mod11);
+        matrix = new Index(edges, vertexes);
         milestone("initMemory");
     }
 
@@ -100,19 +87,14 @@ public class SimpleSNA {
                     String a = t.nextToken();
                     if (j == 0) {
                         key = Integer.parseInt(a);
-                        if (key % 11 == 7) {
-                            matrix.ids[matrixIndex] = key;
-                            matrix.offset[matrixIndex] = shift;
-                            matrixIndex++;
-                        }
+                        matrix.ids[matrixIndex] = key;
+                        matrix.offset[matrixIndex] = shift;
+                        matrixIndex++;
                     } else if (j % 2 == 1) {
                         int v = Integer.parseInt(a);
-                        if (key % 11 == 7) {
-                            matrix.data[shift] = v;
-                            matrix.len[matrixIndex-1]++;
-                            shift++;
-                        }
-
+                        matrix.data[shift] = v;
+                        matrix.len[matrixIndex-1]++;
+                        shift++;
                         int k = invert.index(v);
                         invert.data[invert.offset[k]+invert.len[k]] = key;
                         invert.len[k]++;
@@ -124,54 +106,13 @@ public class SimpleSNA {
         }
         System.out.println();
         milestone("loadInput");
-    }
 
-    public void commonFriends() throws Exception {
-        PrintWriter res = new PrintWriter(new BufferedWriter(new FileWriter("result.txt"), 100000));
-        for (int i = 0; i < matrix.size; i++) {
-            int id = matrix.ids[i];
-            Arrays.sort(matrix.data, matrix.offset[i], matrix.offset[i]+matrix.len[i]);
 
-            TIntArrayList friendsFriends = new TIntArrayList();
-            for (int j = 0; j < matrix.len[i]; j++) {
-                int fr = matrix.data[matrix.offset[i] + j];
-                int k = invert.index(fr);
-                friendsFriends.add(invert.data, invert.offset[k], invert.len[k]);
-            }
-            friendsFriends.sort();
-            TLongArrayList uniqCount = new TLongArrayList();
-            friendsFriends.forEach(val -> {
-                int j = uniqCount.size() - 1;
-                if (j < 0 || (uniqCount.get(j) & 0xFFFFFFFFL) != val) {
-                    uniqCount.add(0x100000000L + val);
-                } else {
-                    uniqCount.set(j, uniqCount.get(j) + 0x100000000L);
-                }
-                return true;
-            });
-            uniqCount.sort();
-
-            int count = (int)Math.round(matrix.len[i]*LIMIT/edges7mod11);
-            boolean printed = false;
-
-            for (int j = uniqCount.size()-1; j >= 0; j--) {
-                long val = uniqCount.get(j);
-                int a = (int) (val & 0xFFFFFFFFL);
-                if (a != id && Arrays.binarySearch(matrix.data, matrix.offset[i], matrix.offset[i]+matrix.len[i], a) < 0) {
-                    if (count > 0) {
-                        if (!printed) res.print(id);
-                        printed = true;
-                        res.print(" " + a);
-                        count--;
-                    } else {
-                        break;
-                    }
-                }
-            }
-            if (printed) res.println();
-        }
-        res.close();
-        milestone("commonFriends");
+        matrix.sortAll();
+        invert.sortAll();
+        matrix.dump("data/matrix.dump");
+        invert.dump("data/invert.dump");
+        milestone("dump");
     }
 
     private void milestone(String key) throws Exception {
@@ -215,6 +156,37 @@ public class SimpleSNA {
 
         int index(int id) {
             return Arrays.binarySearch(ids, id);
+        }
+
+        void sortAll() {
+            qsort(0, size-1);
+            for (int i = 0; i < size; i++) {
+                Arrays.sort(data, offset[i], offset[i] + len[i]);
+            }
+        }
+
+        void dump(String filename) throws Exception {
+            int size7mod11 = 0;
+            int edges7mod11 = 0;
+            for (int i = 0; i < size; i++) {
+                if (ids[i] % 11 == 7) {
+                    size7mod11++;
+                    edges7mod11 += len[i];
+                }
+            }
+            DataOutputStream out = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(filename), 1000000));
+            out.writeInt(size);
+            out.writeInt(data.length);
+            out.writeInt(size7mod11);
+            out.writeInt(edges7mod11);
+            for (int i = 0; i < size; i++) {
+                out.writeInt(ids[i]);
+                out.writeShort(len[i]);
+                for (int j = 0; j < len[i]; j++) {
+                    out.writeInt(data[offset[i] + j]);
+                }
+            }
+            out.close();
         }
     }
 }
