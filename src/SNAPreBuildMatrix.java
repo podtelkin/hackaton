@@ -83,6 +83,7 @@ public class SNAPreBuildMatrix {
                     break;
                 }
                 StringTokenizer t = new StringTokenizer(s, " \t(),{}");
+                int ixMatrix = -1, ixInvert = -1;
                 for (int j = 0; t.hasMoreTokens(); j++) {
                     String a = t.nextToken();
                     if (j == 0) {
@@ -92,12 +93,23 @@ public class SNAPreBuildMatrix {
                         matrixIndex++;
                     } else if (j % 2 == 1) {
                         int v = Integer.parseInt(a);
-                        matrix.data[shift] = v;
+                        matrix.data[ixMatrix = shift] = v;
                         matrix.len[matrixIndex-1]++;
                         shift++;
                         int k = invert.index(v);
-                        invert.data[invert.offset[k]+invert.len[k]] = key;
+                        invert.data[ixInvert = invert.offset[k]+invert.len[k]] = key;
                         invert.len[k]++;
+                    } else {
+                        int v = Integer.parseInt(a);
+                        byte ttype = 0;
+                        for (byte f = 1; f <= 31; f++) {
+                            if ((v & (1 << f)) != 0) {
+                                ttype = f;
+                                break;
+                            }
+                        }
+                        matrix.type[ixMatrix] = ttype;
+                        invert.type[ixInvert] = ttype;
                     }
                 }
             }
@@ -110,8 +122,8 @@ public class SNAPreBuildMatrix {
 
         matrix.sortAll();
         invert.sortAll();
-        matrix.dump("data/matrix.dump");
-        invert.dump("data/invert.dump");
+        matrix.dump("data/matrixWT.dump");
+        invert.dump("data/invertWT.dump");
         milestone("dump");
     }
 
@@ -126,10 +138,12 @@ public class SNAPreBuildMatrix {
         final int[] offset;
         final short[] len;
         final int[] data;
+        final byte[] type;
 
         Index(int mem, int size) {
             System.out.println("[create-index]: size = " + size + ", mem = " + mem);
             this.data = new int[mem];
+            this.type = new byte[mem];
             this.size = size;
             this.ids = new int[size];
             this.offset = new int[size];
@@ -160,9 +174,9 @@ public class SNAPreBuildMatrix {
 
         void sortAll() {
             qsort(0, size-1);
-            for (int i = 0; i < size; i++) {
-                Arrays.sort(data, offset[i], offset[i] + len[i]);
-            }
+//            for (int i = 0; i < size; i++) {
+//                Arrays.sort(data, offset[i], offset[i] + len[i]);
+//            }
         }
 
         void dump(String filename) throws Exception {
@@ -184,6 +198,7 @@ public class SNAPreBuildMatrix {
                 out.writeShort(len[i]);
                 for (int j = 0; j < len[i]; j++) {
                     out.writeInt(data[offset[i] + j]);
+                    out.writeByte(type[offset[i] + j]);
                 }
             }
             out.close();

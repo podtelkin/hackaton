@@ -1,1 +1,1 @@
-java -Xmx6144m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005 -cp out\production\SH2016\;lib\trove4j-3.0.3.jar SimpleSNA3
+java -Xmx10000m -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005 -cp out\production\SH2016\;lib\trove4j-3.0.3.jar SimpleSNA3

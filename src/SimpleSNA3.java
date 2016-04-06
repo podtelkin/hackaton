@@ -38,7 +38,7 @@ public class SimpleSNA3 {
 
         final int[] weight = new int[10000];
         for (int x = 0; x < weight.length; x++)
-            weight[x] = (int) Math.round(100d / Math.pow(x + 10, 1 / 3d) - 6);  // 100/(x+10)^(1/3)-6
+            weight[x] = (int) Math.max(0, Math.round(100d / Math.pow(x + 5, 1 / 3d) - 8));  // 100/(x+5)^(1/3)-8
 
         for (int tid = 0; tid < THREADS; tid++) {
             final int threadId = tid;
